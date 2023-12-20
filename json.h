@@ -13,6 +13,7 @@ public:
     virtual void print(int level, int width = 0) const = 0;
     virtual size_t len() const = 0;
     virtual bool is_one_liner() const = 0;
+    virtual size_t longest_child() const = 0;
     virtual bool all_children_are_basic_vals() const = 0;
     virtual ~json_any() = default;
 };
@@ -38,6 +39,9 @@ public:
     }
     bool all_children_are_basic_vals() const {
         return true;
+    }
+    size_t longest_child() const {
+        return 0;
     }
 };
 
@@ -67,14 +71,18 @@ public:
         return len() <= 60 && _key_vals.size() <= 4;
     }
 
-    std::pair<size_t, size_t> biggest_key_val() const {
+    size_t longest_child() const {
         size_t max_val_len = 0;
+        for (const auto& [key, val] : _key_vals)
+            max_val_len = std::max(max_val_len, val->len());
+        return max_val_len;
+    }
+
+    size_t longest_key() const {
         size_t max_key_len = 0;
-        for (const auto& [key, val] : _key_vals) {
-            max_val_len = std::max(max_val_len, key.length());
-            max_key_len = std::max(max_key_len, val->len());
-        }
-        return std::make_pair(max_val_len, max_key_len);
+        for (const auto& [key, val] : _key_vals)
+            max_key_len = std::max(max_key_len, key.length());
+        return max_key_len;
     }
 
     bool all_children_are_basic_vals() const {
@@ -85,34 +93,50 @@ public:
     }
 
     bool is_matrix() const { //{[], [], [], [], []}
-        bool all_children_are_containers = true;
-        bool all_granchildren_are_basic_vals = true;
         for (const auto& [key, val] : _key_vals) {
-            all_children_are_containers &= !is_basic_val(val);
-            all_granchildren_are_basic_vals &= val->all_children_are_basic_vals();
+            if (is_basic_val(val)) return false; //all_children_are_containers
+            if (!val->is_one_liner()) return false; //they fit in one line
+            if (!val->all_children_are_basic_vals()) return false; //all_granchildren_are_basic_vals
         }
-        return all_children_are_containers && all_granchildren_are_basic_vals;
+        return true;
     }
 
-    void print(int level, int) const override {
+    size_t matrix_cell_width() const {
+        size_t max_grandchild_len = 0;
+        for (const auto& [key, val] : _key_vals)
+            max_grandchild_len = std::max(max_grandchild_len, val->longest_child());
+        return max_grandchild_len;
+    }
+
+    void print(int level, int width) const override {
         if(is_one_liner()) {
             std::cout << '{';
             for (int i = 0; i < _key_vals.size(); i ++) {
                 std::cout << _key_vals[i].first << ": ";
-                _key_vals[i].second->print(level + 1);
+                _key_vals[i].second->print(level + 1, width);
                 if (i != _key_vals.size() - 1)
                     std::cout << ", ";
             }
             std::cout << '}';
         }
+        else if(is_matrix()) {
+            std::cout << '{' << std::endl;
+            for (int i = 0; i < _key_vals.size(); i ++) {
+                std::cout << std::string(level * indentation, ' ') << _key_vals[i].first << ": ";
+                _key_vals[i].second->print(level + 1, matrix_cell_width());
+                if (i != _key_vals.size() - 1)
+                    std::cout << ", ";
+                std::cout << std::endl;
+            }
+            std::cout << std::string((level-1) * indentation, ' ') << '}';
+        }
         else {
-            std::cout << '{' << std::endl;;
+            std::cout << '{' << std::endl;
             for (int i = 0; i < _key_vals.size(); i ++) {
                 std::cout << std::string(level * indentation, ' ');
                 if (all_children_are_basic_vals()) {
-                    auto [key_len, val_len] = biggest_key_val();
-                    std::cout << std::setw(key_len) << std::left << _key_vals[i].first << ": ";
-                    _key_vals[i].second->print(level + 1, val_len);
+                    std::cout << std::setw(longest_key()) << std::left << _key_vals[i].first << ": ";
+                    _key_vals[i].second->print(level + 1, longest_child());
                 }
                 else { 
                     std::cout << _key_vals[i].first << ": ";
@@ -144,7 +168,7 @@ public:
         return len() <= 60 && _array.size() <= 4;
     }
 
-    size_t biggest_elem() const {
+    size_t longest_child() const {
         size_t max_elem_len = 0;
         for (const auto& elem : _array) 
             max_elem_len = std::max(max_elem_len, elem->len());
@@ -159,31 +183,48 @@ public:
     }
 
     bool is_matrix() const { //[[], [], [], [], []]
-        bool all_children_are_containers = true;
-        bool all_granchildren_are_basic_vals = true;
         for (const auto& elem : _array) {
-            all_children_are_containers &= !is_basic_val(elem);
-            all_granchildren_are_basic_vals &= elem->all_children_are_basic_vals();
+            if (is_basic_val(elem)) return false; //all_children_are_containers
+            if (!elem->is_one_liner()) return false; //they fit in one line
+            if (!elem->all_children_are_basic_vals()) return false; //all_granchildren_are_basic_vals
         }
-        return all_children_are_containers && all_granchildren_are_basic_vals;
+        return true;
+    }
+
+    size_t matrix_cell_width() const {
+        size_t max_grandchild_len = 0;
+        for (const auto& elem : _array)
+            max_grandchild_len = std::max(max_grandchild_len, elem->longest_child());
+        return max_grandchild_len;
     }
 
     void print(int level, int width) const override {
         if (is_one_liner()) {
             std::cout << '[';
             for (int i = 0; i < _array.size(); i ++) {
-                _array[i]->print(level + 1);
+                _array[i]->print(level + 1, width);
                 if (i != _array.size() - 1)
                     std::cout << ", ";
             }
             std::cout << ']';
+        }
+        else if (is_matrix()) {
+            std::cout << '[' << std::endl;
+            for (int i = 0; i < _array.size(); i ++) {
+                std::cout << std::string(level * indentation, ' ');
+                _array[i]->print(level + 1, matrix_cell_width());
+                if (i != _array.size() - 1)
+                    std::cout << ", ";
+                std::cout << std::endl;
+            }
+            std::cout << std::string((level-1) * indentation, ' ') << ']';
         }
         else {
             std::cout << '[' << std::endl;
             for (int i = 0; i < _array.size(); i ++) {
                 std::cout << std::string(level * indentation, ' ');
                 if (all_children_are_basic_vals())
-                    _array[i]->print(level + 1, biggest_elem());
+                    _array[i]->print(level + 1, longest_child());
                 else
                     _array[i]->print(level + 1);
                 if (i != _array.size() - 1)
@@ -216,9 +257,8 @@ private:
     }
 
     void skip_spaces() {
-        while (_pos < _expr.size() && std::isspace(_expr[_pos])) {
+        while (_pos < _expr.size() && std::isspace(_expr[_pos]))
             _pos ++;
-        }
     }
 
     std::unique_ptr<json_any> parse_any() {
@@ -296,7 +336,7 @@ private:
 
         while (_pos < _expr.size() && 
                 (std::isdigit(peek_next_char()) || peek_next_char() == '-' || peek_next_char() == '.' || 
-                peek_next_char() == 'e' || peek_next_char() == 'E')) 
+                        peek_next_char() == 'e' || peek_next_char() == 'E')) 
             next_char();
 
         return std::make_unique<json_val<int>>(_expr.data() + beg, _pos - beg);
