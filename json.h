@@ -13,6 +13,7 @@ public:
     virtual void print(int level, int width = 0) const = 0;
     virtual size_t len() const = 0;
     virtual bool is_one_liner() const = 0;
+    virtual bool all_children_are_basic_vals() const = 0;
     virtual ~json_any() = default;
 };
 
@@ -35,14 +36,20 @@ public:
     size_t len() const {
         return _val.length();
     }
+    bool all_children_are_basic_vals() const {
+        return true;
+    }
 };
+
+bool is_basic_val(const std::unique_ptr<json_any>& ptr) {
+    return  typeid(*ptr) == typeid(json_val<int>) || 
+            typeid(*ptr) == typeid(json_val<std::string>) ||
+            typeid(*ptr) == typeid(json_val<bool>) ||
+            typeid(*ptr) == typeid(json_val<std::nullptr_t>);
+}
 
 class json_object : public json_any {
     std::vector<std::pair<std::string_view, std::unique_ptr<json_any>>> _key_vals;
-    mutable size_t _val_max_len = 0;
-    mutable size_t _key_max_len = 0;
-    mutable bool _all_children_one_liners = true;
-    mutable bool _all_children_are_vals = true;
 public:
     json_object(std::vector<std::pair<std::string_view, std::unique_ptr<json_any>>>& key_vals) :
         _key_vals(std::move(key_vals)) {}
@@ -52,18 +59,39 @@ public:
         for (const auto& [key, val] : _key_vals) {
             ret += key.length() + 2; // : 
             ret += val->len() + 2; // ,
-            _key_max_len = std::max(_key_max_len, key.length());
-            _val_max_len = std::max(_val_max_len, val->len());
-            _all_children_one_liners &= val->is_one_liner();
-            _all_children_are_vals &= 
-                (typeid(*val) == typeid(json_val<int>) ||
-                typeid(*val) == typeid(json_val<std::string>));
         }
         return ret - 2; // no comma after last elem
     }
 
     bool is_one_liner() const override {
         return len() <= 60 && _key_vals.size() <= 4;
+    }
+
+    std::pair<size_t, size_t> biggest_key_val() const {
+        size_t max_val_len = 0;
+        size_t max_key_len = 0;
+        for (const auto& [key, val] : _key_vals) {
+            max_val_len = std::max(max_val_len, key.length());
+            max_key_len = std::max(max_key_len, val->len());
+        }
+        return std::make_pair(max_val_len, max_key_len);
+    }
+
+    bool all_children_are_basic_vals() const {
+        bool ret = true;
+        for (const auto& [key, val] : _key_vals)
+            ret &= is_basic_val(val);
+        return ret;
+    }
+
+    bool is_matrix() const { //{[], [], [], [], []}
+        bool all_children_are_containers = true;
+        bool all_granchildren_are_basic_vals = true;
+        for (const auto& [key, val] : _key_vals) {
+            all_children_are_containers &= !is_basic_val(val);
+            all_granchildren_are_basic_vals &= val->all_children_are_basic_vals();
+        }
+        return all_children_are_containers && all_granchildren_are_basic_vals;
     }
 
     void print(int level, int) const override {
@@ -81,9 +109,10 @@ public:
             std::cout << '{' << std::endl;;
             for (int i = 0; i < _key_vals.size(); i ++) {
                 std::cout << std::string(level * indentation, ' ');
-                if (_all_children_are_vals) {
-                    std::cout << std::setw(_key_max_len) << std::left << _key_vals[i].first << ": ";
-                    _key_vals[i].second->print(level + 1, _val_max_len);
+                if (all_children_are_basic_vals()) {
+                    auto [key_len, val_len] = biggest_key_val();
+                    std::cout << std::setw(key_len) << std::left << _key_vals[i].first << ": ";
+                    _key_vals[i].second->print(level + 1, val_len);
                 }
                 else { 
                     std::cout << _key_vals[i].first << ": ";
@@ -100,28 +129,43 @@ public:
 
 class json_array : public json_any {
     std::vector<std::unique_ptr<json_any>> _array;
-    mutable size_t _elem_max_len = 0;
-    mutable bool _all_children_one_liners = true;
-    mutable bool _all_children_are_vals = true;
 public:
     json_array(std::vector<std::unique_ptr<json_any>>& array) :
         _array(std::move(array)) {}
 
     size_t len() const {
         int ret = 2; // []
-        for (const auto& elem : _array) {
+        for (const auto& elem : _array)
             ret += elem->len() + 2;  //,
-            _elem_max_len = std::max(_elem_max_len, elem->len());
-            _all_children_one_liners &= elem->is_one_liner();
-            _all_children_are_vals &= 
-                (typeid(*elem) == typeid(json_val<int>) ||
-                typeid(*elem) == typeid(json_val<std::string>));
-        }
         return ret - 2; // no comma after last elem
     }
 
     bool is_one_liner() const override {
         return len() <= 60 && _array.size() <= 4;
+    }
+
+    size_t biggest_elem() const {
+        size_t max_elem_len = 0;
+        for (const auto& elem : _array) 
+            max_elem_len = std::max(max_elem_len, elem->len());
+        return max_elem_len;
+    }
+
+    bool all_children_are_basic_vals() const {
+        bool ret = true;
+        for (const auto& elem : _array) 
+            ret &= is_basic_val(elem);
+        return ret;
+    }
+
+    bool is_matrix() const { //[[], [], [], [], []]
+        bool all_children_are_containers = true;
+        bool all_granchildren_are_basic_vals = true;
+        for (const auto& elem : _array) {
+            all_children_are_containers &= !is_basic_val(elem);
+            all_granchildren_are_basic_vals &= elem->all_children_are_basic_vals();
+        }
+        return all_children_are_containers && all_granchildren_are_basic_vals;
     }
 
     void print(int level, int width) const override {
@@ -138,8 +182,8 @@ public:
             std::cout << '[' << std::endl;
             for (int i = 0; i < _array.size(); i ++) {
                 std::cout << std::string(level * indentation, ' ');
-                if (_all_children_are_vals)
-                    _array[i]->print(level + 1, _elem_max_len);
+                if (all_children_are_basic_vals())
+                    _array[i]->print(level + 1, biggest_elem());
                 else
                     _array[i]->print(level + 1);
                 if (i != _array.size() - 1)
@@ -225,10 +269,8 @@ private:
     std::unique_ptr<json_val<std::string>> parse_string() {
         size_t beg = _pos;
         next_char();
-        while (_pos < _expr.size() && peek_next_char() != '\"') {
-            // Handle escape characters
+        while (_pos < _expr.size() && peek_next_char() != '\"')
             next_char();
-        }
         next_char();
         return std::make_unique<json_val<std::string>>(_expr.data() + beg, _pos - beg);
     }
