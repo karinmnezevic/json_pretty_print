@@ -12,8 +12,14 @@ int main() {
     //{"coord": {"x": 1.2, "y": 1.23, "z": -13}, "coord": {"x": -13.845, "y": 1234, "z": 0}, "coord": {"x": 4563, "y": -12, "z": 0} , "coord": {"x": 1.2, "y": 1.23, "z": -12}}
     //{"coord": [{"x": 1.2, "y": 1.23}, {"x": 3.5432, "y": 123}, {"x": 1, "y": 123.4} , {"x": -12, "y": 1.2}, {"x": 12, "y": 969.696}]}
     //[[12.34, -1.24, 4859.13, 10.19], [321.32, -2342.12, 4.13, 21.23],[-12.33, -123.33, 23.33, 5435.33], [111.11, 22.22, 3.33, -4.44]]
+    //[[123123214, 232, -12313], [1233, 24242, 1232], [211, -1, 0.32]]
 
+//1. longest child bug
 //using ptr -> std::unique_ptr
+//_elems public koji kurac
+// koristit children() za iteriranje kroz object/array
+//test matrice s razlicitim brojem stupaca
+//test matrica s malo normalnim, malo key_val
     std::string json_input;
     while (2 < 3) {
         getline(std::cin, json_input);
@@ -23,4 +29,4 @@ int main() {
     }
 
     return 0;
-}   
+}       

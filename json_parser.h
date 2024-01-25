@@ -52,17 +52,12 @@ private:
     }
     
     std::unique_ptr<json_object> parse_object() {
-        std::vector<std::pair<std::string_view, std::unique_ptr<json_any>>> result;
+        container_t result;
         while (next_char() != '}') {
             skip_spaces();
-            std::string_view key = parse_string()->get();
-            skip_spaces();
-            next_char();
-            skip_spaces();
-            result.push_back(std::make_pair(key, parse_any()));
+            result.push_back(parse_key_val());
             skip_spaces();
         }
-
         return std::make_unique<json_object>(result);
     }
 
@@ -74,6 +69,15 @@ private:
             skip_spaces();
         }
         return std::make_unique<json_array>(result);
+    }
+
+    std::unique_ptr<json_key_value> parse_key_val() {
+        std::string_view key = parse_string()->get();
+        skip_spaces();
+        next_char(); // :
+        skip_spaces();
+        std::unique_ptr<json_any> val = parse_any();
+        return std::make_unique<json_key_value>(key, std::move(val));
     }
 
     std::unique_ptr<json_val<std::string>> parse_string() {
