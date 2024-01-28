@@ -22,6 +22,7 @@ public:
     bool all_children_are_basic_vals() const;
     bool is_one_liner() const;
     virtual void print_as_row(int level, const std::vector<size_t> keys_v = {}, const std::vector<size_t> widths_v = {}) const {} //for containers
+    virtual size_t val_len() const { return 0; }
 };
 
 using container_t = std::vector<std::unique_ptr<json_any>>;
@@ -43,8 +44,11 @@ public:
     inline bool is_basic_val() const override {
         return true;
     }
-    inline std::string_view get() const {
+    inline std::string_view val() const {
         return _val;
+    }
+    inline size_t val_len() const override {
+        return _val.size();
     }
 private:
     const container_t& children() const override {
@@ -65,7 +69,7 @@ public:
     size_t len() const override;
     bool is_basic_val() const override;
     size_t key_len() const;
-    size_t val_len() const;
+    size_t val_len() const override;
 private:
     const container_t& children() const override;
 };
@@ -78,8 +82,12 @@ public:
     size_t len() const override;
     const container_t& children() const override;
     bool is_basic_val() const override;
-    size_t longest_child() const;
+    size_t longest_val() const;
+    size_t longest_key() const;
     std::tuple<bool, std::vector<size_t>, std::vector<size_t>> check_matrix() const;
+
+    void print(int level) const;
+    void print_as_row(int level, const std::vector<size_t> keys_v = {}, const std::vector<size_t> widths_v = {}) const override;
 };
 
 class json_object : public json_container {
@@ -87,7 +95,6 @@ public:
     json_object(container_t& key_vals);
     void print(int level, int val_width = 0, int key_width = 0) const override;
     void print_as_row(int level, const std::vector<size_t> keys_v = {}, const std::vector<size_t> widths_v = {}) const override;
-    size_t longest_key() const;
 };
 
 class json_array : public json_container {

@@ -72,7 +72,7 @@ private:
     }
 
     std::unique_ptr<json_key_value> parse_key_val() {
-        std::string_view key = parse_string()->get();
+        std::string_view key = parse_string()->val();
         skip_spaces();
         next_char(); // :
         skip_spaces();
