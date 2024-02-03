@@ -11,27 +11,17 @@
 namespace pretty_json {
 
 bool json_any::is_one_liner() const {
-    return len() <= 60 && children().size() <= 4;
+    return len() <= 60;
 }
 
-bool json_any::all_children_are_basic_vals() const {
-    bool ret = true;
-    for (const auto& child : children()) 
-        ret &= child->is_basic_val();
-    return ret;
-}
+json_key_value::json_key_value(std::string_view key, std::unique_ptr<json_any> val) : 
+    _key(key), _val(std::move(val)) {}
 
 void json_key_value::print(int level, int val_width, int key_width) const {
     if (key_width == 0) 
         key_width = _key.size();
     std::cout << std::left << std::setw(key_width) << _key << ": ";
     _val->print(level, val_width, key_width);
-}
-
-void json_key_value::print_as_row(int level, const std::vector<size_t> keys_v, const std::vector<size_t> widths_v) const {
-    //longest key nekako vrag ga odnio
-    std::cout << _key << ": ";
-    _val->print_as_row(level, keys_v, widths_v);
 }
 
 size_t json_key_value::len() const {
@@ -42,19 +32,35 @@ bool json_key_value::is_basic_val() const {
     return _val->is_basic_val();
 }
 
-const container_t& json_key_value::children() const {
-    return _val->children();
+std::string_view json_key_value::key() const {
+    return _key;
 }
 
-size_t json_key_value::key_len() const {
-    return _key.size();
-}
-
-size_t json_key_value::val_len() const {
-    return _val->len();
+const std::unique_ptr<json_any>& json_key_value::val() const {
+    return _val;
 }
 
 json_container::json_container(container_t& elems) : _elems(std::move(elems)) {}
+
+std::pair<size_t, size_t> json_container::calc_widths() const {
+    size_t val_width = 0;
+    size_t key_width = 0;
+    for (const auto& elem : _elems) {
+        if (!elem->is_basic_val())
+            return std::make_pair(0,0);
+        if (const auto* key_value = dynamic_cast<const json_key_value*>(elem.get())) {
+            val_width = std::max(val_width, key_value->val()->len());
+            key_width = std::max(key_width, key_value->key().size());
+        }
+        else
+            val_width = std::max(val_width, elem->len());
+    }
+    return std::make_pair(val_width, key_width);
+}
+
+bool json_container::is_one_liner() const {
+    return len() <= 60 && _elems.size() <= 4;
+}
 
 size_t json_container::len() const {
     size_t ret = 2;
@@ -63,7 +69,7 @@ size_t json_container::len() const {
     return ret - 2; // no comma after last elem
 }
 
-const container_t& json_container::children() const {
+const container_t& json_container::elems() const {
     return _elems;
 }
 
@@ -71,134 +77,100 @@ bool json_container::is_basic_val() const {
     return false;
 }
 
-size_t json_container::longest_val() const {
-    size_t max_len = 0;
-    for (const auto& elem : _elems)
-        max_len = std::max(max_len, elem->val_len());
-    return max_len;
-}
-
-size_t json_container::longest_key() const {
-    size_t max_key_len = 0;
-    for (const auto& elem : _elems) {
-        if (const auto* key_value = dynamic_cast<const json_key_value*>(elem.get())) {
-            max_key_len = std::max(max_key_len, key_value->key_len()); //mozda se mozes i bez ifa izvuc
-        }
-    }
-    return max_key_len;
-}
-
 std::tuple<bool, std::vector<size_t>, std::vector<size_t>> json_container::check_matrix() const {
     bool is_matrix = true;
     std::vector<size_t> max_column_key_len;
     std::vector<size_t> max_column_val_len;
-        for (const auto& elem : _elems) {
-        is_matrix &= !elem->is_basic_val(); //all_children_are_containers
-        is_matrix &= elem->is_one_liner(); //they fit in one line
-        is_matrix &= elem->all_children_are_basic_vals(); //all_granchildren_are_basic_vals
-        if (!is_matrix) break;
-        int column = 0;
-        for (const auto& grandchild : elem->children()) {
-            if (const auto* key_value = dynamic_cast<const json_key_value*>(grandchild.get())) {
-                if (max_column_val_len.size() <= column) {
-                    max_column_key_len.push_back(key_value->key_len());
-                    max_column_val_len.push_back(key_value->val_len());
+    for (const auto& elem : _elems) {
+        if (const auto* container = dynamic_cast<const json_container*>(elem.get())) {
+            is_matrix &= container->is_one_liner();
+            for (size_t col = 0; col < container->elems().size(); col ++) {
+                is_matrix &= container->elems()[col]->is_basic_val();
+                if (max_column_val_len.size() <= col) {
+                    max_column_key_len.push_back(0);
+                    max_column_val_len.push_back(0);
                 }
-                else {
-                    max_column_key_len[column] = std::max(max_column_key_len[column], key_value->key_len());
-                    max_column_val_len[column] = std::max(max_column_val_len[column], key_value->val_len());
+                if (const auto* key_value = dynamic_cast<const json_key_value*>(container->elems()[col].get())) {
+                    max_column_key_len[col] = std::max(max_column_key_len[col], key_value->key().size());
+                    max_column_val_len[col] = std::max(max_column_val_len[col], key_value->val()->len());                    
                 }
+                else
+                    max_column_val_len[col] = std::max(max_column_val_len[col], container->elems()[col]->len());
             }
-            else {
-                if (max_column_val_len.size() <= column) {
-                    //pretpostavljam da su u ovom slucaju svi basic_val
-                    max_column_val_len.push_back(grandchild->len());
-                }
-                else {
-                    max_column_val_len[column] = std::max(max_column_val_len[column], grandchild->len());
-                }
-            }
-            column ++;
+        }
+        else {
+            is_matrix = false;
+            break;
         }
     }
     return std::make_tuple(is_matrix, max_column_key_len, max_column_val_len);
 }
 
-void json_container::print(int level) const {
-    if(is_one_liner()) {
-        for (int i = 0; i < _elems.size(); i ++) {
-            _elems[i]->print(level + 1);
-            if (i != _elems.size() - 1)
-                std::cout << ", ";
-        }
-    }
-    else {
-        std::cout << std::endl;
-        auto [is_matrix, max_keys, max_vals] = check_matrix();
-        if(is_matrix) {
-            for (int i = 0; i < _elems.size(); i ++) {
-                std::cout << std::string(level * indentation, ' ');
-                _elems[i]->print_as_row(level + 1, max_keys, max_vals);
-                if (i != _elems.size() - 1)
-                    std::cout << ", ";
-                std::cout << std::endl;
-            }
-            std::cout << std::string((level - 1) * indentation, ' ');
-        }
-        else {
-            for (int i = 0; i < _elems.size(); i ++) {
-                std::cout << std::string(level * indentation, ' ');
-                if (all_children_are_basic_vals()) {
-                    _elems[i]->print(level + 1, longest_val(), longest_key());
-                }
-                else {
-                    _elems[i]->print(level + 1, 0, 0);
-                }
-                if (i != _elems.size() - 1)
-                    std::cout << ", ";
-                std::cout << std::endl;
-            }
-            std::cout << std::string((level-1) * indentation, ' ');
-        }
-    }
-}
-
-void json_container::print_as_row(int level, std::vector<size_t> keys_v, std::vector<size_t> vals_v) const {
+void json_container::print_single_line(int level, std::vector<size_t> keys_v, std::vector<size_t> vals_v) const {
     if (vals_v.empty()) vals_v.assign(_elems.size(), 0);
     if (keys_v.empty()) keys_v.assign(_elems.size(), 0);
     for (int i = 0; i < _elems.size(); i ++) {
-        _elems[i]->print(level + 1, vals_v[i], keys_v[i]);
+        _elems[i]   ->print(level + 1, vals_v[i], keys_v[i]);
         if (i != _elems.size() - 1)
             std::cout << ", ";
     }
 }
 
-json_object::json_object(container_t& key_vals) : json_container::json_container(key_vals) {}
-
-void json_object::print(int level, int val_width, int key_width) const {
-    std::cout << '{';
-    json_container::print(level);
-    std::cout << '}';
+void json_container::print_multiline(int level, size_t val_width, size_t key_width) const {
+    std::cout << std::endl;
+    for (int i = 0; i < _elems.size(); i ++) {
+        std::cout << std::string(level * indentation, ' ');
+        _elems[i]->print(level + 1, val_width, key_width);
+        if (i != _elems.size() - 1)
+            std::cout << ", ";
+        std::cout << std::endl;
+    }
+    std::cout << std::string((level-1) * indentation, ' ');
 }
 
-void json_object::print_as_row(int level, const std::vector<size_t> keys_v, const std::vector<size_t> vals_v) const {
-    std::cout << '{';
-    json_container::print_as_row(level, keys_v, vals_v);
-    std::cout << '}';
+void json_container::print_multiline_matrix(
+    int level, std::vector<size_t> col_key_widths, std::vector<size_t> col_val_widths) const {
+    std::cout << std::endl;
+    for (int i = 0; i < _elems.size(); i ++) {
+        std::cout << std::string(level * indentation, ' ');
+        if (const auto* container = dynamic_cast<const json_container*>(_elems[i].get())) //ovo uvijek mora vrijediti
+            container->print_single_line(level + 1, col_key_widths, col_val_widths);
+        if (i != _elems.size() - 1)
+            std::cout << ", ";
+        std::cout << std::endl;
+    }
+    std::cout << std::string((level - 1) * indentation, ' ');
 }
 
-json_array::json_array(container_t& array) : json_container::json_container(array) {}
+void json_container::print(int level, int val_width, int key_width) const{
+    std::cout << _begin;
+    if (is_one_liner()) {
+        print_single_line(level);
+        std::cout << _end;
+        return;
+    }
 
-void json_array::print(int level, int val_width, int key_width) const {
-    std::cout << '[';
-    json_container::print(level);
-    std::cout << ']';
+    auto [is_matrix, max_keys, max_vals] = check_matrix();
+    if (is_matrix) {
+        print_multiline_matrix(level, max_keys, max_vals);
+        std::cout << _end;
+        return;
+    }
+    
+    auto [val_w, key_w] = calc_widths();
+    print_multiline(level, val_w, key_w);
+    std::cout << _end;
 }
 
-void json_array::print_as_row(int level, const std::vector<size_t> keys_v, const std::vector<size_t> vals_v) const {
-    std::cout << '[';
-    json_container::print_as_row(level, keys_v, vals_v);
-    std::cout << ']';
+json_object::json_object(container_t& key_vals) : 
+    json_container::json_container(key_vals) {
+        _begin = '{';
+        _end = '}';
+    }
+
+json_array::json_array(container_t& array) : json_container::json_container(array) {
+    _begin = '[';
+    _end = ']';
 }
 
 } // namespace pretty_json

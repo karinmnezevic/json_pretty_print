@@ -8,7 +8,8 @@
                 "-fcolor-diagnostics",
                 "-fansi-escape-codes",
                 "-g",
-                "${fileDirname}/**.cpp",
+                "${fileDirname}/main.cpp",
+                "${fileDirname}/json_types.cpp",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}",
                 "-std=c++20"
