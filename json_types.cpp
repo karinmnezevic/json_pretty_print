@@ -17,9 +17,9 @@ bool json_any::is_one_liner() const {
 json_key_value::json_key_value(std::string_view key, std::unique_ptr<json_any> val) : 
     _key(key), _val(std::move(val)) {}
 
-void json_key_value::print(size_t level, size_t val_width, size_t key_width) const {
-    std::cout << std::left << std::setw(std::max(_key.size(), key_width)) << _key << ": ";
-    _val->print(level, val_width, key_width);
+void json_key_value::print(size_t level, std::ostream& os, size_t val_width, size_t key_width) const {
+    os << std::left << std::setw(std::max(_key.size(), key_width)) << _key << ": ";
+    _val->print(level, os, val_width, key_width);
 }
 
 size_t json_key_value::len() const {
@@ -111,60 +111,60 @@ std::tuple<bool, std::vector<size_t>, std::vector<size_t>> json_container::check
     return std::make_tuple(is_matrix, max_column_key_len, max_column_val_len);
 }
 
-void json_container::print_single_line(size_t level, std::vector<size_t> keys_v, std::vector<size_t> vals_v) const {
+void json_container::print_single_line(size_t level, std::ostream& os, std::vector<size_t> keys_v, std::vector<size_t> vals_v) const {
     if (vals_v.empty()) vals_v.assign(_elems.size(), 0);
     if (keys_v.empty()) keys_v.assign(_elems.size(), 0);
     for (int i = 0; i < _elems.size(); i ++) {
-        _elems[i]   ->print(level + 1, vals_v[i], keys_v[i]);
+        _elems[i]->print(level + 1, os, vals_v[i], keys_v[i]);
         if (i != _elems.size() - 1)
-            std::cout << ", ";
+            os << ", ";
     }
 }
 
-void json_container::print_multiline(size_t level, size_t val_width, size_t key_width) const {
-    std::cout << std::endl;
+void json_container::print_multiline(size_t level, std::ostream& os, size_t val_width, size_t key_width) const {
+    os << std::endl;
     for (int i = 0; i < _elems.size(); i ++) {
-        std::cout << std::string(level * indentation, ' ');
-        _elems[i]->print(level + 1, val_width, key_width);
+        os << std::string(level * indentation, ' ');
+        _elems[i]->print(level + 1, os, val_width, key_width);
         if (i != _elems.size() - 1)
-            std::cout << ", ";
-        std::cout << std::endl;
+            os << ", ";
+        os << std::endl;
     }
-    std::cout << std::string((level-1) * indentation, ' ');
+    os << std::string((level-1) * indentation, ' ');
 }
 
 void json_container::print_multiline_matrix(
-    size_t level, std::vector<size_t> col_key_widths, std::vector<size_t> col_val_widths) const {
-    std::cout << std::endl;
+    size_t level, std::ostream& os, std::vector<size_t> col_key_widths, std::vector<size_t> col_val_widths) const {
+    os << std::endl;
     for (int i = 0; i < _elems.size(); i ++) {
-        std::cout << std::string(level * indentation, ' ');
+        os << std::string(level * indentation, ' ');
         if (const auto* container = dynamic_cast<const json_container*>(get_val(_elems[i]).get())) //ovo uvijek mora vrijediti
-            container->print_single_line(level + 1, col_key_widths, col_val_widths);
+            container->print_single_line(level + 1, os, col_key_widths, col_val_widths);
         if (i != _elems.size() - 1)
-            std::cout << ", ";
-        std::cout << std::endl;
+            os << ", ";
+        os << std::endl;
     }
-    std::cout << std::string((level - 1) * indentation, ' ');
+    os << std::string((level - 1) * indentation, ' ');
 }
 
-void json_container::print(size_t level, size_t val_width, size_t key_width) const {
-    std::cout << _begin;
+void json_container::print(size_t level, std::ostream& os, size_t val_width, size_t key_width) const {
+    os << _begin;
     if (is_one_liner()) {
-        print_single_line(level);
-        std::cout << _end;
+        print_single_line(level, os);
+        os << _end;
         return;
     }
 
     auto [is_matrix, max_keys, max_vals] = check_matrix();
     if (is_matrix) {
-        print_multiline_matrix(level, max_keys, max_vals);
-        std::cout << _end;
+        print_multiline_matrix(level, os, max_keys, max_vals);
+        os << _end;
         return;
     }
     
     auto [val_w, key_w] = calc_widths();
-    print_multiline(level, val_w, key_w);
-    std::cout << _end;
+    print_multiline(level, os, val_w, key_w);
+    os << _end;
 }
 
 json_object::json_object(container_t& key_vals) : 
