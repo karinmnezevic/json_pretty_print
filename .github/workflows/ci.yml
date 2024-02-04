@@ -1,0 +1,59 @@
+name: CI
+
+on: push
+
+jobs:
+  posix:
+    name: "${{ matrix.toolset }} std=c++${{ matrix.cxxstd }} ${{ matrix.build-type }}"
+
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - toolset: g++-12
+            compiler: g++-12
+            install: g++-12
+            os: ubuntu-latest
+            container: ubuntu:22.04
+            build-type: 'Release'
+            cxxstd: 20
+            cxxflags: ''
+            ldflags: ''
+
+          - toolset: clang++-15
+            compiler: clang++-15
+            install: clang++-15
+            os: ubuntu-latest
+            container: ubuntu:22.04
+            build-type: 'Release'
+            cxxstd: 20
+            cxxflags: ''
+            ldflags: ''
+
+    runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
+    env:
+      CXXFLAGS: ${{ matrix.cxxflags }} -Wall -Wextra
+      LDFLAGS:  ${{ matrix.ldflags }}
+      CMAKE_BUILD_PARALLEL_LEVEL: 4
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install compiler
+        run: |
+          apt-get update
+          apt-get -y install sudo cmake
+          sudo apt-get install -y ${{ matrix.install }}
+
+      - name: Build Prettifier
+        run: |
+          cmake -S . -B build \
+          -DCMAKE_CXX_COMPILER="${{ matrix.compiler }}" -DCMAKE_CXX_FLAGS="${{ env.CXXFLAGS }}" \
+          -DCMAKE_CXX_STANDARD="${{ matrix.cxxstd }}" -DCMAKE_EXE_LINKER_FLAGS="${{ env.LDFLAGS }}" -DCMAKE_BUILD_TYPE="${{ matrix.build-type }}" \
+          cmake --build build  -j 4 
