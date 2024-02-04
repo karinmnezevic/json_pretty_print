@@ -11,7 +11,7 @@
                 "${fileDirname}/main.cpp",
                 "${fileDirname}/json_types.cpp",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}",
+                "${fileDirname}/main",
                 "-std=c++20"
             ],
             "options": {

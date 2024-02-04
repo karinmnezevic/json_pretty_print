@@ -15,16 +15,20 @@ int main() {
     //[[123123214, 232, -12313], [1233, 24242, 1232], [211, -1, 0.32]]
 
 //print (val=0) override sredit
+// napravit github workflow s testiranjem ovih kiflica
 //is_basic_val -> is_basic_json
 //using ptr -> std::unique_ptr
 //_elems public koji kurac, generalno public/private brija sredit
+//prvo val_w onda key_w uvijek u funkcijama
 // width uvijek mora biti size_t
 // dodat parsanje esc chara u stringovima
-// mozda brojke poravnavat s desna, a stringove slijeva
+
 // napisat neke formalne testove
-//test matrice s razlicitim brojem stupaca
 //test matrica s malo normalnim, malo key_val
+//test matrice s razlicitim brojem stupaca
 //test [ vise objekata koji ne stanu u isti red ]
+
+// mozda brojke poravnavat s desna, a stringove slijeva
     std::string json_input;
     while (2 < 3) {
         getline(std::cin, json_input);

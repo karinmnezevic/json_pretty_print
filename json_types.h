@@ -9,14 +9,14 @@
 
 namespace pretty_json {
 
-inline int indentation = 2; // number of spaces used as indent
+inline size_t indentation = 2; // number of spaces used as indent
 
 class json_any {
 public:
     virtual size_t len() const = 0;
     virtual bool is_one_liner() const;
     virtual bool is_basic_val() const = 0;
-    virtual void print(int level, int val_width = 0, int key_width = 0) const = 0;
+    virtual void print(size_t level, size_t val_width = 0, size_t key_width = 0) const = 0;
     virtual ~json_any() = default;
 };
 
@@ -27,10 +27,8 @@ class json_val : public json_any {
     std::string_view _content;
 public: 
     inline json_val(char* beg, size_t len) : _content(beg, len) {}
-    inline void print(int level, int val_width = 0, int key_width = 0) const override {
-        if (val_width == 0)
-            val_width = _content.size();
-        std::cout << std::right << std::setw(val_width) << _content;
+    inline void print(size_t level, size_t val_width = 0, size_t key_width = 0) const override {
+        std::cout << std::right << std::setw(std::max(_content.size(), val_width)) << _content;
     }
     inline size_t len() const override {
         return _content.length();
@@ -48,7 +46,7 @@ class json_key_value : public json_any {
     std::unique_ptr<json_any> _val;
 public:
     json_key_value(std::string_view key, std::unique_ptr<json_any> val);
-    void print(int level, int val_width = 0, int key_width = 0) const override;
+    void print(size_t level, size_t val_width = 0, size_t key_width = 0) const override;
     size_t len() const override;
     bool is_basic_val() const override;
     
@@ -70,10 +68,10 @@ public:
     std::tuple<bool, std::vector<size_t>, std::vector<size_t>> check_matrix() const;
     const container_t& elems() const;
 
-    void print(int level, int val_width = 0, int key_width = 0) const override;
-    void print_single_line(int level, const std::vector<size_t> keys_v = {}, const std::vector<size_t> widths_v = {}) const;
-    void print_multiline_matrix(int level, std::vector<size_t> col_key_widths, std::vector<size_t> col_val_widths) const;
-    void print_multiline(int level, size_t val_width, size_t key_width) const;
+    void print(size_t level, size_t val_width = 0, size_t key_width = 0) const override;
+    void print_single_line(size_t level, const std::vector<size_t> keys_v = {}, const std::vector<size_t> widths_v = {}) const;
+    void print_multiline_matrix(size_t level, std::vector<size_t> col_key_widths, std::vector<size_t> col_val_widths) const;
+    void print_multiline(size_t level, size_t val_width, size_t key_width) const;
 };
 
 class json_object : public json_container {
