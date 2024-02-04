@@ -53,7 +53,10 @@ jobs:
 
       - name: Build Prettifier
         run: |
-          cmake -S . -B build \
+          cmake -S . -B . \
           -DCMAKE_CXX_COMPILER="${{ matrix.compiler }}" -DCMAKE_CXX_FLAGS="${{ env.CXXFLAGS }}" \
           -DCMAKE_CXX_STANDARD="${{ matrix.cxxstd }}" -DCMAKE_EXE_LINKER_FLAGS="${{ env.LDFLAGS }}" -DCMAKE_BUILD_TYPE="${{ matrix.build-type }}"
-          cmake --build build
+          cmake --build .
+      
+      - name: Run tests
+        run: ./run_tests

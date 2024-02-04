@@ -28,7 +28,7 @@ class json_val : public json_any {
 public: 
     inline json_val(char* beg, size_t len) : _content(beg, len) {}
     inline void print(size_t level, std::ostream& os, size_t val_width = 0, size_t key_width = 0) const override {
-        std::cout << std::right << std::setw(std::max(_content.size(), val_width)) << _content;
+        os << std::right << std::setw(std::max(_content.size(), val_width)) << _content;
     }
     inline size_t len() const override {
         return _content.length();
