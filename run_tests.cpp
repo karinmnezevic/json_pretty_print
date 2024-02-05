@@ -17,7 +17,7 @@ bool identical_content(std::filesystem::path file1, std::filesystem::path file2)
     return content1 == content2;
 }
 
-bool test(std::string base) {
+bool run_test(std::string base) {
     std::ifstream ifile(base + "_in.txt");
     std::ofstream ofile(base + "_generated.txt");
     if (ifile.is_open()) {
@@ -32,19 +32,20 @@ bool test(std::string base) {
     return identical_content(base + "_generated.txt", base + "_expected.txt");
 }
 
+std::vector<std::string> test_names = {
+    "test_1", "test_2", "test_3", "test_4", "test_5", "test_6", "test_7", "test_8"
+};
+
 int main() {
 
-    if (!test("tests/test_1"))
-        return -1;
-    
-    if (!test("tests/test_2"))
-        return -1;
-    
-    if (!test("tests/test_3"))
-        return -1;
-    
-    if (!test("tests/test_4"))
-        return -1;
+    for (auto& base_name : test_names) {
+        if (!run_test("tests/" + base_name)) {
+            std::cout << base_name << " FAILED" << std::endl;
+            return -1;
+        }
+        else 
+            std::cout << base_name << " PASSED" << std::endl;
+    }
 
     return 0; 
 }

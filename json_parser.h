@@ -112,8 +112,8 @@ private:
         size_t beg = _pos;
 
         while (_pos < _expr.size() && 
-                (std::isdigit(peek_next_char()) || peek_next_char() == '-' || peek_next_char() == '.' || 
-                        peek_next_char() == 'e' || peek_next_char() == 'E')) 
+                (std::isdigit(peek_next_char()) || peek_next_char() == '-' || peek_next_char() == '+' || 
+                        peek_next_char() == '.' || peek_next_char() == 'e' || peek_next_char() == 'E')) 
             next_char();
 
         return std::make_unique<json_val<int>>(_expr.data() + beg, _pos - beg);
