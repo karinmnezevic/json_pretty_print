@@ -83,8 +83,11 @@ private:
     std::unique_ptr<json_val<std::string>> parse_string() {
         size_t beg = _pos;
         next_char();
-        while (_pos < _expr.size() && peek_next_char() != '\"')
+        while (_pos < _expr.size() && peek_next_char() != '\"') {
+            if (peek_next_char() == '\\')
+                next_char();
             next_char();
+        }
         next_char();
         return std::make_unique<json_val<std::string>>(_expr.data() + beg, _pos - beg);
     }
