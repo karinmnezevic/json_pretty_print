@@ -15,12 +15,13 @@ class json_any {
 public:
     virtual size_t len() const = 0;
     virtual bool is_one_liner() const;
-    virtual bool is_basic_val() const = 0;
+    virtual bool is_basic_json() const = 0;
     virtual void print(size_t level, std::ostream& os, size_t val_width = 0, size_t key_width = 0) const = 0;
     virtual ~json_any() = default;
 };
 
-using container_t = std::vector<std::unique_ptr<json_any>>;
+using json_ptr_t = std::unique_ptr<json_any>;
+using container_t = std::vector<json_ptr_t>;
 
 template <typename T>
 class json_val : public json_any {
@@ -33,7 +34,7 @@ public:
     inline size_t len() const override {
         return _content.length();
     }
-    inline bool is_basic_val() const override {
+    inline bool is_basic_json() const override {
         return true;
     }
     inline std::string_view val() const {
@@ -43,25 +44,25 @@ public:
 
 class json_key_value : public json_any {
     std::string_view _key;
-    std::unique_ptr<json_any> _val;
+    json_ptr_t _val;
 public:
-    json_key_value(std::string_view key, std::unique_ptr<json_any> val);
+    json_key_value(std::string_view key, json_ptr_t val);
     void print(size_t level, std::ostream& os, size_t val_width = 0, size_t key_width = 0) const override;
     size_t len() const override;
-    bool is_basic_val() const override;
+    bool is_basic_json() const override;
     
     std::string_view key() const;
-    const std::unique_ptr<json_any>& val() const;
+    const json_ptr_t& val() const;
 };
 
 class json_container : public json_any {
-public:
+private:
     container_t _elems;
     char _begin, _end;
 public:
-    json_container(container_t& elems);
+    json_container(container_t& elems, char begin, char end);
     size_t len() const override;
-    bool is_basic_val() const override;
+    bool is_basic_json() const override;
     bool is_one_liner() const override;
 
     std::pair<size_t, size_t> calc_widths() const;

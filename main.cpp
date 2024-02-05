@@ -14,11 +14,6 @@ int main() {
     //[[12.34, -1.24, 4859.13, 10.19], [321.32, -2342.12, 4.13, 21.23],[-12.33, -123.33, 23.33, 5435.33], [111.11, 22.22, 3.33, -4.44]]
     //[[123123214, 232, -12313], [1233, 24242, 1232], [211, -1, 0.32]]
 
-// napravit github workflow s testiranjem ovih kiflica
-//is_basic_val -> is_basic_json
-//using ptr -> std::unique_ptr
-//_elems public koji kurac, generalno public/private brija sredit
-//prvo val_w onda key_w uvijek u funkcijama
 // dodat parsanje esc chara u stringovima
 // pitat chatgpt za neke savjete
 // promjenit ime u json_pretty_print

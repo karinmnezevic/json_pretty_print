@@ -14,7 +14,7 @@ bool json_any::is_one_liner() const {
     return len() <= 60;
 }
 
-json_key_value::json_key_value(std::string_view key, std::unique_ptr<json_any> val) : 
+json_key_value::json_key_value(std::string_view key, json_ptr_t val) : 
     _key(key), _val(std::move(val)) {}
 
 void json_key_value::print(size_t level, std::ostream& os, size_t val_width, size_t key_width) const {
@@ -26,25 +26,26 @@ size_t json_key_value::len() const {
     return _key.size() + 2 + _val->len();
 }
 
-bool json_key_value::is_basic_val() const {
-    return _val->is_basic_val();
+bool json_key_value::is_basic_json() const {
+    return _val->is_basic_json();
 }
 
 std::string_view json_key_value::key() const {
     return _key;
 }
 
-const std::unique_ptr<json_any>& json_key_value::val() const {
+const json_ptr_t& json_key_value::val() const {
     return _val;
 }
 
-json_container::json_container(container_t& elems) : _elems(std::move(elems)) {}
+json_container::json_container(container_t& elems, char begin, char end) : 
+    _elems(std::move(elems)), _begin(begin), _end(end) {}
 
 std::pair<size_t, size_t> json_container::calc_widths() const {
     size_t val_width = 0;
     size_t key_width = 0;
     for (const auto& elem : _elems) {
-        if (!elem->is_basic_val())
+        if (!elem->is_basic_json())
             return std::make_pair(0,0);
         if (const auto* key_value = dynamic_cast<const json_key_value*>(elem.get())) {
             val_width = std::max(val_width, key_value->val()->len());
@@ -71,11 +72,11 @@ const container_t& json_container::elems() const {
     return _elems;
 }
 
-bool json_container::is_basic_val() const {
+bool json_container::is_basic_json() const {
     return false;
 }
 
-const std::unique_ptr<json_any>& get_val(const std::unique_ptr<json_any>& any) {
+const json_ptr_t& get_val(const json_ptr_t& any) {
     if (const auto* any_key_val = dynamic_cast<const json_key_value*>(any.get())) {
         return any_key_val->val();
     }
@@ -90,7 +91,7 @@ std::tuple<bool, std::vector<size_t>, std::vector<size_t>> json_container::check
         if (const auto* container = dynamic_cast<const json_container*>(get_val(elem).get())) {
             is_matrix &= container->is_one_liner();
             for (size_t col = 0; col < container->elems().size(); col ++) {
-                is_matrix &= container->elems()[col]->is_basic_val();
+                is_matrix &= container->elems()[col]->is_basic_json();
                 if (max_column_val_len.size() <= col) {
                     max_column_key_len.push_back(0);
                     max_column_val_len.push_back(0);
@@ -168,14 +169,9 @@ void json_container::print(size_t level, std::ostream& os, size_t val_width, siz
 }
 
 json_object::json_object(container_t& key_vals) : 
-    json_container::json_container(key_vals) {
-        _begin = '{';
-        _end = '}';
-    }
+    json_container::json_container(key_vals, '{', '}') {}
 
-json_array::json_array(container_t& array) : json_container::json_container(array) {
-    _begin = '[';
-    _end = ']';
-}
+json_array::json_array(container_t& array) : 
+    json_container::json_container(array, '[', ']') {}
 
 } // namespace pretty_json
