@@ -6,6 +6,7 @@ int main() {
 //test matrica s malo normalnim, malo key_val
 //test matrice s razlicitim brojem stupaca
 //test [ vise objekata koji ne stanu u isti red ]
+// mozda bolje handleati ovaj slucaj kada su neke stvari 0 / prazne, std::optional??
 
 // pitat chatgpt za neke savjete
 // procitat jos jednom citav kod
