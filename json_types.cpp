@@ -112,10 +112,18 @@ std::tuple<bool, std::vector<size_t>, std::vector<size_t>> json_container::check
     return std::make_tuple(is_matrix, max_column_key_len, max_column_val_len);
 }
 
+void json_container::print_single_line(size_t level, std::ostream& os) const {
+    os << _begin;
+    for (int i = 0; i < _elems.size(); i ++) {
+        _elems[i]->print(level + 1, os);
+        if (i != _elems.size() - 1)
+            os << ", ";
+    }
+    os << _end;
+}
+
 void json_container::print_single_line(size_t level, std::ostream& os, std::vector<size_t> keys_v, std::vector<size_t> vals_v) const {
     os << _begin;
-    if (vals_v.empty()) vals_v.assign(_elems.size(), 0);
-    if (keys_v.empty()) keys_v.assign(_elems.size(), 0);
     for (int i = 0; i < _elems.size(); i ++) {
         _elems[i]->print(level + 1, os, vals_v[i], keys_v[i]);
         if (i != _elems.size() - 1)
@@ -141,7 +149,7 @@ void json_container::print_multiline_matrix(
     os << _begin << std::endl;
     for (int i = 0; i < _elems.size(); i ++) {
         os << std::string(level * indentation, ' ');
-        if (const auto* container = dynamic_cast<const json_container*>(get_val(_elems[i]).get())) //ovo uvijek mora vrijediti
+        if (const auto* container = dynamic_cast<const json_container*>(get_val(_elems[i]).get()))
             container->print_single_line(level + 1, os, col_key_widths, col_val_widths);
         if (i != _elems.size() - 1)
             os << ", ";

@@ -70,7 +70,8 @@ public:
     const container_t& elems() const;
 
     void print(size_t level, std::ostream& os, size_t val_width = 0, size_t key_width = 0) const override;
-    void print_single_line(size_t level, std::ostream& os, const std::vector<size_t> keys_v = {}, const std::vector<size_t> widths_v = {}) const;
+    void print_single_line(size_t level, std::ostream& os) const;
+    void print_single_line(size_t level, std::ostream& os, const std::vector<size_t> keys_v, const std::vector<size_t> widths_v) const;
     void print_multiline_matrix(size_t level, std::ostream& os, std::vector<size_t> col_key_widths, std::vector<size_t> col_val_widths) const;
     void print_multiline(size_t level, std::ostream& os, size_t val_width, size_t key_width) const;
 };

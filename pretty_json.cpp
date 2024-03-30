@@ -1,11 +1,7 @@
-#include <iostream>
 #include "json_parser.h"
 
 int main() {
 
-// mozda bolje handleati ovaj slucaj kada su neke stvari 0 / prazne, std::optional??
-// pitat chatgpt za neke savjete
-// procitat jos jednom citav kod
     std::string json_input;
     while (2 < 3) {
         getline(std::cin, json_input);
@@ -15,4 +11,4 @@ int main() {
     }
 
     return 0;
-}       
+}
